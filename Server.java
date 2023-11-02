@@ -5,8 +5,10 @@
 import java.io.*;
 import java.net.*;
 import java.util.*;
+import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
+import java.nio.charset.Charset;
 
 // Server Class 
 public class Server {
@@ -23,8 +25,21 @@ public class Server {
 		}
 	}
 
+	// Create file
+	public static void createAfile(String filename) throws IOException {
+		File file = new File(filename);
+		// create a file if doesn't exists
+		if (!file.exists()) {
+			file.createNewFile();
+		} else {
+			System.out.println(filename + " already exists.");
+		}
+	}
+
 	public static void main(String[] args) {
 		try {
+			// Create user.txt file
+			createAfile("user.txt");
 
 			// server is listening on port 1234
 			server = new ServerSocket(SERVER_PORT);
@@ -94,12 +109,6 @@ class ClientHandler implements Runnable {
 	public void writeToFile(String filename, String text) throws IOException {
 
 		File file = new File(filename);
-
-		// create a file if doesn't exists
-		if (!file.exists()) {
-			file.createNewFile();
-		}
-
 		// create a file channel
 		FileOutputStream fos = new FileOutputStream(file, true);
 		FileChannel channel = fos.getChannel();
@@ -141,29 +150,48 @@ class ClientHandler implements Runnable {
 		// prevent other processes from writing to file while reading
 		FileLock lock = channel.lock();
 
-		// reading from file
-		BufferedReader br = new BufferedReader(new InputStreamReader(fis));
-		String line = "";
+		ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
+		Charset charset = Charset.forName("US-ASCII");
 
-		while ((line = br.readLine()) != null) {
-			if (line.trim().isEmpty())
-				continue; // don't insert empty lines
-			data.add(line);
+		while(channel.read(byteBuffer) > 0){
+			byteBuffer.array();
+			System.out.print(charset.decode(byteBuffer));
 		}
+		//System.out.println("bytebuffer:"+byteBuffer);
 
-		// closing the files
-		br.close();
 		fis.close();
+		lock.release();
+		channel.close();
 
-		// Release the lock - if it is not null!
-		if (lock != null) {
-			lock.release();
-		}
+		// try {
+		// 	// reading from file
+		// 	// BufferedReader br = new BufferedReader(new InputStreamReader(fis));
+		// 	// String line = "";
 
-		// close the lock - if it is not null!
-		if (channel != null) {
-			channel.close();
-		}
+		// 	// while ((line = br.readLine()) != null) {
+		// 	// 	if (line.trim().isEmpty())
+		// 	// 		continue; // don't insert empty lines
+		// 	// 	data.add(line);
+		// 	// }
+		// 	// br.close();
+
+		// } finally {
+
+		// 	// closing the files
+		// 	//br.close();
+		// 	fis.close();
+
+		// 	// Release the lock - if it is not null!
+		// 	if (lock != null) {
+		// 		lock.release();
+		// 	}
+
+		// 	// close the lock - if it is not null!
+		// 	if (channel != null) {
+		// 		channel.close();
+		// 	}
+
+		// }
 
 		return data;
 	}
@@ -282,24 +310,23 @@ class ClientHandler implements Runnable {
 						session.put(login[1], login[2]);
 						// insert entry to text file
 						final String userEntry = login[1] + "|" + PORT_NUMBER + "|" + IP_ADDRESS;
-                        // read user .txt file 
+						// read user .txt file
 						final ArrayList<String> data = this.readFromFile("user.txt");
 						Boolean isUserLoggedin = false;
-						for(final String info: data){
-							if(info.contains(login[1])){
-								isUserLoggedin=true;
+						for (final String info : data) {
+							if (info.contains(login[1])) {
+								isUserLoggedin = true;
 								break;
 							}
 						}
-						if(!isUserLoggedin){
+						if (!isUserLoggedin) {
 							this.writeToFile("user.txt", userEntry);
 							writeToClient(bufferedWriter, "200 OK");
-						}
-						else{
+						} else {
 							writeToClient(bufferedWriter, "404 user already logged in.");
 
 						}
-						
+
 					} else {
 						writeToClient(bufferedWriter, "410 Wrong UserID or Password.");
 					}
@@ -327,18 +354,17 @@ class ClientHandler implements Runnable {
 					// delete login session file
 					writeToClient(bufferedWriter, "200 OK");
 					break;
-				}
-				else if(line != null && line.equals("WHO")){
+				} else if (line != null && line.equals("WHO")) {
 					final ArrayList<String> data = this.readFromFile("user.txt");
-					String who="";
+					String who = "";
 
-					for( final String s: data){
-						who+= s +"\n";
+					for (final String s : data) {
+						who += s + "\n";
 					}
 					writeToClient(bufferedWriter, "200 OK");
 					writeToClient(bufferedWriter, who);
 				}
-				
+
 				/**
 				 * else if(line != null && line.equals("SEND")){....}
 				 */
