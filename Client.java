@@ -87,13 +87,16 @@ public class Client {
 							System.out.println(serverInput);
 						} 
 						else if(userInput != null && userInput.equals("WHO")){
-							String msg = scanner.nextLine();
-							msg.replace('\n','\n');
-							System.out.println(msg);
+							serverInput = bufferedReader.readLine();
+							final String [] activeUsers = serverInput.split(",");
+							for(final String a:activeUsers){
+								System.out.println(a);
+							}
 						}
 						else {
 							// do nothing
 						}
+				
 					}
 				}
 			}

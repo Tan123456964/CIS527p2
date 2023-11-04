@@ -7,6 +7,7 @@ import java.net.*;
 import java.util.*;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
+import static java.nio.charset.StandardCharsets.*;
 
 // Server Class 
 public class Server {
@@ -23,8 +24,21 @@ public class Server {
 		}
 	}
 
+	// Create file
+	public static void createAfile(String filename) throws IOException {
+		File file = new File(filename);
+		// create a file if doesn't exists
+		if (!file.exists()) {
+			file.createNewFile();
+		} else {
+			System.out.println(filename + " already exists.");
+		}
+	}
+
 	public static void main(String[] args) {
 		try {
+			// Create user.txt file
+			createAfile("user.txt");
 
 			// server is listening on port 1234
 			server = new ServerSocket(SERVER_PORT);
@@ -94,35 +108,32 @@ class ClientHandler implements Runnable {
 	public void writeToFile(String filename, String text) throws IOException {
 
 		File file = new File(filename);
-
-		// create a file if doesn't exists
-		if (!file.exists()) {
-			file.createNewFile();
-		}
-
-		// create a file channel
-		FileOutputStream fos = new FileOutputStream(file, true);
-		FileChannel channel = fos.getChannel();
+		RandomAccessFile raf = new RandomAccessFile(file, "rw");
+		FileChannel channel = raf.getChannel();
 
 		// lock the file so other don't write to file at same time.
 		FileLock lock = channel.lock();
+		try {
+			// //encoding string to utf
+			// byte[] ptext = (text+"\n").getBytes(ISO_8859_1); 
+            // String value = new String(ptext, UTF_8); 
 
-		BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(fos));
-		bw.write(text);
-		bw.newLine();
+			raf.seek(raf.length());// go to end of line
+			raf.writeChars(text+"\n"); // write text to file
 
-		// Close the files
-		bw.close();
-		fos.close();
-
-		// Release the lock - if it is not null!
-		if (lock != null) {
-			lock.release();
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				if (lock != null)
+					lock.release();
+				if (raf != null)
+					raf.close();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
 		}
-		// close the lock - if it is not null!
-		if (channel != null) {
-			channel.close();
-		}
+
 	}
 
 	/**
@@ -135,34 +146,32 @@ class ClientHandler implements Runnable {
 		ArrayList<String> data = new ArrayList<String>();
 
 		File file = new File(filename);
-		FileInputStream fis = new FileInputStream(file);
-		FileChannel channel = fis.getChannel();
+		RandomAccessFile raf = new RandomAccessFile(file, "rw");
+		FileChannel channel = raf.getChannel();
 
 		// prevent other processes from writing to file while reading
 		FileLock lock = channel.lock();
 
-		// reading from file
-		BufferedReader br = new BufferedReader(new InputStreamReader(fis));
-		String line = "";
+		try {
+			// reading from file
+			String line = "";
+			while ((line = raf.readLine()) != null) {
+				if (line.trim().isEmpty())
+					continue; // don't insert empty lines
+				data.add(line);
+			}
 
-		while ((line = br.readLine()) != null) {
-			if (line.trim().isEmpty())
-				continue; // don't insert empty lines
-			data.add(line);
-		}
-
-		// closing the files
-		br.close();
-		fis.close();
-
-		// Release the lock - if it is not null!
-		if (lock != null) {
-			lock.release();
-		}
-
-		// close the lock - if it is not null!
-		if (channel != null) {
-			channel.close();
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				if (lock != null)
+					lock.release();
+				if (raf != null)
+					raf.close();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
 		}
 
 		return data;
@@ -176,38 +185,48 @@ class ClientHandler implements Runnable {
 	public void modifyExistingFile(String filename, String entry) throws IOException {
 
 		File file = new File(filename);
-		// create a file channel
-		FileOutputStream fos = new FileOutputStream(file);
-		FileChannel channel = fos.getChannel();
+		RandomAccessFile raf = new RandomAccessFile(file, "rw");
+		FileChannel channel = raf.getChannel();
 
 		// lock the file so other don't write to file at same time.
 		FileLock lock = channel.lock();
 
-		// ***** READING CONTENT OF FILE ****
-		final ArrayList<String> data = this.readFromFile(filename);
+		try {
+			// reading from file
+			ArrayList<String> data = new ArrayList<String>();
+			String line = "";
+			while ((line = raf.readLine()) != null) {
+				if (line.trim().isEmpty())
+					continue; // don't insert empty lines
 
-		// ***** WRITING TO FILE *****
+			    //encoing to UTF and removing null bytes 
+				byte[] ptext = (line).getBytes(ISO_8859_1); 
+				byte[] noNullByte= new String(ptext).replaceAll("\0", "").getBytes();
+                String value = new String(noNullByte, UTF_8); 
+				data.add(value);
+			}
 
-		BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(fos));
-		// remove entry from file
-		data.removeIf(e -> e.equals(entry));
+			//removing entry from arraylist 
+			data.removeIf(e -> e.equals(entry));
+  
+			// writing remaining data to file 
+			raf.setLength(0); //clear file 
+			for (final String u : data){
+				raf.seek(raf.length()); //go to end of line
+				raf.writeChars(u+"\n");
+			}
 
-		for (final String s : data) {
-			bw.write(s);
-			bw.newLine();
-		}
-
-		// closing files
-		bw.close();
-		fos.close();
-
-		// Release the lock - if it is not null!
-		if (lock != null) {
-			lock.release();
-		}
-		// close the lock - if it is not null!
-		if (channel != null) {
-			channel.close();
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				if (lock != null)
+					lock.release();
+				if (raf != null)
+					raf.close();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
 		}
 	}
 
@@ -235,7 +254,7 @@ class ClientHandler implements Runnable {
 			bufferedWriter = new BufferedWriter(outputStreamWriter);
 
 			// Get client port and IP
-			final String IP_ADDRESS = serviceSocket.getInetAddress().toString();
+			final String IP_ADDRESS = serviceSocket.getInetAddress().toString().replace("/","");
 			final String PORT_NUMBER = Integer.toString(serviceSocket.getPort());
 
 			// message store command
@@ -282,24 +301,23 @@ class ClientHandler implements Runnable {
 						session.put(login[1], login[2]);
 						// insert entry to text file
 						final String userEntry = login[1] + "|" + PORT_NUMBER + "|" + IP_ADDRESS;
-                        // read user .txt file 
+						// read user .txt file
 						final ArrayList<String> data = this.readFromFile("user.txt");
 						Boolean isUserLoggedin = false;
-						for(final String info: data){
-							if(info.contains(login[1])){
-								isUserLoggedin=true;
+						for (final String info : data) {
+							if (info.contains(login[1])) {
+								isUserLoggedin = true;
 								break;
 							}
 						}
-						if(!isUserLoggedin){
+						if (!isUserLoggedin) {
 							this.writeToFile("user.txt", userEntry);
 							writeToClient(bufferedWriter, "200 OK");
-						}
-						else{
+						} else {
 							writeToClient(bufferedWriter, "404 user already logged in.");
 
 						}
-						
+
 					} else {
 						writeToClient(bufferedWriter, "410 Wrong UserID or Password.");
 					}
@@ -327,18 +345,17 @@ class ClientHandler implements Runnable {
 					// delete login session file
 					writeToClient(bufferedWriter, "200 OK");
 					break;
-				}
-				else if(line != null && line.equals("WHO")){
+				} else if (line != null && line.equals("WHO")) {
 					final ArrayList<String> data = this.readFromFile("user.txt");
-					String who="";
+					String who = "";
 
-					for( final String s: data){
-						who+= s +"\n";
+					for (final String s : data) {
+						who += s + ",";
 					}
 					writeToClient(bufferedWriter, "200 OK");
 					writeToClient(bufferedWriter, who);
 				}
-				
+
 				/**
 				 * else if(line != null && line.equals("SEND")){....}
 				 */
