@@ -5,10 +5,9 @@
 import java.io.*;
 import java.net.*;
 import java.util.*;
-import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
-import java.nio.charset.Charset;
+import static java.nio.charset.StandardCharsets.*;
 
 // Server Class 
 public class Server {
@@ -109,29 +108,32 @@ class ClientHandler implements Runnable {
 	public void writeToFile(String filename, String text) throws IOException {
 
 		File file = new File(filename);
-		// create a file channel
-		FileOutputStream fos = new FileOutputStream(file, true);
-		FileChannel channel = fos.getChannel();
+		RandomAccessFile raf = new RandomAccessFile(file, "rw");
+		FileChannel channel = raf.getChannel();
 
 		// lock the file so other don't write to file at same time.
 		FileLock lock = channel.lock();
+		try {
+			// //encoding string to utf
+			// byte[] ptext = (text+"\n").getBytes(ISO_8859_1); 
+            // String value = new String(ptext, UTF_8); 
 
-		BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(fos));
-		bw.write(text);
-		bw.newLine();
+			raf.seek(raf.length());// go to end of line
+			raf.writeChars(text+"\n"); // write text to file
 
-		// Close the files
-		bw.close();
-		fos.close();
-
-		// Release the lock - if it is not null!
-		if (lock != null) {
-			lock.release();
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				if (lock != null)
+					lock.release();
+				if (raf != null)
+					raf.close();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
 		}
-		// close the lock - if it is not null!
-		if (channel != null) {
-			channel.close();
-		}
+
 	}
 
 	/**
@@ -144,54 +146,33 @@ class ClientHandler implements Runnable {
 		ArrayList<String> data = new ArrayList<String>();
 
 		File file = new File(filename);
-		FileInputStream fis = new FileInputStream(file);
-		FileChannel channel = fis.getChannel();
+		RandomAccessFile raf = new RandomAccessFile(file, "rw");
+		FileChannel channel = raf.getChannel();
 
 		// prevent other processes from writing to file while reading
 		FileLock lock = channel.lock();
 
-		ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
-		Charset charset = Charset.forName("US-ASCII");
+		try {
+			// reading from file
+			String line = "";
+			while ((line = raf.readLine()) != null) {
+				if (line.trim().isEmpty())
+					continue; // don't insert empty lines
+				data.add(line);
+			}
 
-		while(channel.read(byteBuffer) > 0){
-			byteBuffer.array();
-			System.out.print(charset.decode(byteBuffer));
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				if (lock != null)
+					lock.release();
+				if (raf != null)
+					raf.close();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
 		}
-		//System.out.println("bytebuffer:"+byteBuffer);
-
-		fis.close();
-		lock.release();
-		channel.close();
-
-		// try {
-		// 	// reading from file
-		// 	// BufferedReader br = new BufferedReader(new InputStreamReader(fis));
-		// 	// String line = "";
-
-		// 	// while ((line = br.readLine()) != null) {
-		// 	// 	if (line.trim().isEmpty())
-		// 	// 		continue; // don't insert empty lines
-		// 	// 	data.add(line);
-		// 	// }
-		// 	// br.close();
-
-		// } finally {
-
-		// 	// closing the files
-		// 	//br.close();
-		// 	fis.close();
-
-		// 	// Release the lock - if it is not null!
-		// 	if (lock != null) {
-		// 		lock.release();
-		// 	}
-
-		// 	// close the lock - if it is not null!
-		// 	if (channel != null) {
-		// 		channel.close();
-		// 	}
-
-		// }
 
 		return data;
 	}
@@ -204,38 +185,48 @@ class ClientHandler implements Runnable {
 	public void modifyExistingFile(String filename, String entry) throws IOException {
 
 		File file = new File(filename);
-		// create a file channel
-		FileOutputStream fos = new FileOutputStream(file);
-		FileChannel channel = fos.getChannel();
+		RandomAccessFile raf = new RandomAccessFile(file, "rw");
+		FileChannel channel = raf.getChannel();
 
 		// lock the file so other don't write to file at same time.
 		FileLock lock = channel.lock();
 
-		// ***** READING CONTENT OF FILE ****
-		final ArrayList<String> data = this.readFromFile(filename);
+		try {
+			// reading from file
+			ArrayList<String> data = new ArrayList<String>();
+			String line = "";
+			while ((line = raf.readLine()) != null) {
+				if (line.trim().isEmpty())
+					continue; // don't insert empty lines
 
-		// ***** WRITING TO FILE *****
+			    //encoing to UTF and removing null bytes 
+				byte[] ptext = (line).getBytes(ISO_8859_1); 
+				byte[] noNullByte= new String(ptext).replaceAll("\0", "").getBytes();
+                String value = new String(noNullByte, UTF_8); 
+				data.add(value);
+			}
 
-		BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(fos));
-		// remove entry from file
-		data.removeIf(e -> e.equals(entry));
+			//removing entry from arraylist 
+			data.removeIf(e -> e.equals(entry));
+  
+			// writing remaining data to file 
+			raf.setLength(0); //clear file 
+			for (final String u : data){
+				raf.seek(raf.length()); //go to end of line
+				raf.writeChars(u+"\n");
+			}
 
-		for (final String s : data) {
-			bw.write(s);
-			bw.newLine();
-		}
-
-		// closing files
-		bw.close();
-		fos.close();
-
-		// Release the lock - if it is not null!
-		if (lock != null) {
-			lock.release();
-		}
-		// close the lock - if it is not null!
-		if (channel != null) {
-			channel.close();
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				if (lock != null)
+					lock.release();
+				if (raf != null)
+					raf.close();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
 		}
 	}
 
@@ -263,7 +254,7 @@ class ClientHandler implements Runnable {
 			bufferedWriter = new BufferedWriter(outputStreamWriter);
 
 			// Get client port and IP
-			final String IP_ADDRESS = serviceSocket.getInetAddress().toString();
+			final String IP_ADDRESS = serviceSocket.getInetAddress().toString().replace("/","");
 			final String PORT_NUMBER = Integer.toString(serviceSocket.getPort());
 
 			// message store command
@@ -359,7 +350,7 @@ class ClientHandler implements Runnable {
 					String who = "";
 
 					for (final String s : data) {
-						who += s + "\n";
+						who += s + ",";
 					}
 					writeToClient(bufferedWriter, "200 OK");
 					writeToClient(bufferedWriter, who);

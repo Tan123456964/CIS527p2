@@ -30,15 +30,15 @@ public class Client {
 		BufferedWriter bufferedWriter = null;
 
 		// Check the number of command line parameters
-		// if (args.length < 1) {
-		// 	System.out.println("Usage: Client <Server IP Address>");
-		// 	System.exit(1);
-		// }
+		if (args.length < 1) {
+			System.out.println("Usage: Client <Server IP Address>");
+			System.exit(1);
+		}
 
 		// try to open a socket on SERVER_PORT
 		// try to open input and output streams
 		try {
-			clientSocket = new Socket("localhost", SERVER_PORT);
+			clientSocket = new Socket(args[0], SERVER_PORT);
 
 			inputStreamReader = new InputStreamReader(clientSocket.getInputStream());
 			outputStreamWriter = new OutputStreamWriter(clientSocket.getOutputStream());
@@ -87,13 +87,16 @@ public class Client {
 							System.out.println(serverInput);
 						} 
 						else if(userInput != null && userInput.equals("WHO")){
-							String msg = scanner.nextLine();
-							msg.replace('\n','\n');
-							System.out.println(msg);
+							serverInput = bufferedReader.readLine();
+							final String [] activeUsers = serverInput.split(",");
+							for(final String a:activeUsers){
+								System.out.println(a);
+							}
 						}
 						else {
 							// do nothing
 						}
+				
 					}
 				}
 			}
