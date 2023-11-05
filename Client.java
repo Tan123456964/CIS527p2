@@ -23,16 +23,15 @@ public class Client {
 		BufferedWriter bufferedWriter = null;
 
 		// Check the number of command line parameters
-		// if (args.length < 1) {
-		// System.out.println("Usage: Client <Server IP Address>");
-		// System.exit(1);
-		// }
+		if (args.length < 1) {
+		System.out.println("Usage: Client <Server IP Address>");
+		System.exit(1);
+		}
 
 		// try to open a socket on SERVER_PORT
 		// try to open input and output streams
 		try {
-			clientSocket = new Socket("localhost", SERVER_PORT);
-
+			clientSocket = new Socket(args[0], SERVER_PORT);
 			ServerMessageHandler serverMessageHandler = new ServerMessageHandler(clientSocket);
 			bufferedWriter = new BufferedWriter(new OutputStreamWriter(clientSocket.getOutputStream()));
 			Scanner scanner = new Scanner(System.in);
@@ -87,6 +86,8 @@ class ServerMessageHandler implements Runnable {
 	private Socket server = null;
 	private BufferedReader bufferedReader = null;
 	private String serverInput = null;
+    // Used to terminate client socket when SERVER is closed.
+	private String sentinel ="210 the server is about to shutdown ......";
 
 	ServerMessageHandler(Socket server) throws IOException {
 		this.server = server;
@@ -101,6 +102,11 @@ class ServerMessageHandler implements Runnable {
 				// print any messages you receive from server 
 				serverInput = bufferedReader.readLine();
 				System.out.println(serverInput);
+
+				// If server is closed by a root user 
+				if(serverInput.equals(sentinel)){
+					break;
+				}
 				
 				// get out of infinite loop if server is not responding anything back 
 				if(serverInput == null){

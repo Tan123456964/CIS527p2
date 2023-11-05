@@ -2,14 +2,9 @@
  * Server.java
  */
 
-// import static java.nio.charset.StandardCharsets.ISO_8859_1;
-// import static java.nio.charset.StandardCharsets.UTF_8;
-
 import java.io.*;
 import java.net.*;
 import java.util.*;
-// import java.nio.channels.FileChannel;
-// import java.nio.channels.FileLock;
 
 // Server Class 
 public class Server {
@@ -60,7 +55,7 @@ class ClientHandler implements Runnable {
 
 	private Socket client = null;
 	private BufferedReader bufferedReader = null;
-	private BufferedWriter bufferedWriter = null;
+	private PrintWriter printWriter = null;
 	private ArrayList<ClientHandler> clients;
 
 	// save logged in user
@@ -77,17 +72,17 @@ class ClientHandler implements Runnable {
 	ClientHandler(Socket client, ServerSocket server, ArrayList<ClientHandler> clients) throws IOException {
 		this.client = client;
 		this.bufferedReader = new BufferedReader(new InputStreamReader(this.client.getInputStream()));
-		this.bufferedWriter = new BufferedWriter(new OutputStreamWriter(this.client.getOutputStream()));
+		this.printWriter = new PrintWriter(this.client.getOutputStream(),true);
 		this.myService = server;
 		this.clients = clients;
 	}
 
 	// write a single message to client
-	public void writeToClient(BufferedWriter br, String message) throws IOException {
-		br.write(message);
-		br.newLine();
-		br.flush();
+	public void writeToClient(String message) throws IOException {
+		this.printWriter.println(message);
 	}
+
+
 
 	// closes the sockets
 	public void closeAndExitSocket() {
@@ -174,20 +169,14 @@ class ClientHandler implements Runnable {
 
 				line = bufferedReader.readLine();
 
-				System.out.println("Client CMD: " + line);
-
 				if (line != null && line.contains("SEND") || (msgSendCMD.equals("SEND") && !msgSendUSER.isEmpty())) {
 					if (msgSendCMD.equals("SEND")) {
 						String msg1 = "200 OK you have a new message from " + msgSendUSER;
 						String msg2 = session.keySet().toArray()[0] + ": " + line;
 						for (final ClientHandler c : clients) {
 							if (c.getSession().containsKey(msgSendUSER)) {
-								c.writeToClient(bufferedWriter, msg1);
-								c.writeToClient(bufferedWriter, msg2);
-								// c.bufferedWriter.write(msg1);
-								// //c.bufferedWriter.flush();
-								// c.bufferedWriter.write(msg2);
-								// c.bufferedWriter.flush();
+								c.writeToClient(msg1);
+								c.writeToClient(msg2);
 								break;
 							}
 						}
@@ -197,11 +186,11 @@ class ClientHandler implements Runnable {
 					} else {
 						String send[] = line.split(" ");
 						if (send.length != 2) {
-							writeToClient(bufferedWriter, "Invalid send command");
+							writeToClient("Invalid send command");
 						} else if (userInfo.containsKey(send[1])) {
 							msgSendCMD = "SEND";
 							msgSendUSER = send[1];
-							writeToClient(bufferedWriter, "200 OK");
+							writeToClient("200 OK");
 						} else {
 							// do nothing
 						}
@@ -216,22 +205,22 @@ class ClientHandler implements Runnable {
 						} else {
 							msgStoreCMD = line;
 						}
-						writeToClient(bufferedWriter, "200 OK");
+						writeToClient("200 OK");
 					} else {
-						writeToClient(bufferedWriter, "401 You are not currently logged in, login first.");
+						writeToClient("401 You are not currently logged in, login first.");
 					}
 				} else if (line != null && line.equals("MSGGET")) {
 					ArrayList<String> word = readFromFile("word.txt");
-					writeToClient(bufferedWriter, "200 OK");
-					writeToClient(bufferedWriter, word.get(wordNum % word.size()));
+					writeToClient("200 OK");
+					writeToClient(word.get(wordNum % word.size()));
 					wordNum++;
 				} else if (line != null && line.contains("LOGIN")) {
 					String login[] = line.split(" ");
 					if (session.size() > 0) {
 						String msg = "409 user " + session.keySet().toArray()[0] + " is already logged in.";
-						writeToClient(bufferedWriter, msg);
+						writeToClient(msg);
 					} else if (login.length < 3) {
-						writeToClient(bufferedWriter, "300 message format error.");
+						writeToClient("300 message format error.");
 					} else if (userInfo.containsKey(login[1]) && userInfo.get(login[1]).equals(login[2])) {
 
 						boolean isUserLoggedIn = false;
@@ -248,18 +237,18 @@ class ClientHandler implements Runnable {
 						}
 						if (!isUserLoggedIn) {
 							session.put(login[1], IP_ADDRESS);
-							writeToClient(bufferedWriter, "200 OK");
+							writeToClient("200 OK");
 						} else {
-							writeToClient(bufferedWriter, "201 user is already logged in by another client");
+							writeToClient("201 user is already logged in by another client");
 						}
 
 					} else {
-						writeToClient(bufferedWriter, "410 Wrong UserID or Password.");
+						writeToClient("410 Wrong UserID or Password.");
 					}
 				} else if (line != null && line.equals("SHUTDOWN")) {
 
 					if (session.size() > 0 && session.containsKey("root")) {
-						writeToClient(bufferedWriter, "200 OK");
+						writeToClient("200 OK");
 
 						// close all running sockets
 						for (final ClientHandler c : clients) {
@@ -271,31 +260,32 @@ class ClientHandler implements Runnable {
 							if (session.containsKey(clientname)) {
 								continue;
 							}
-							c.writeToClient(bufferedWriter, "210 the server is about to shutdown ......");
+							c.writeToClient("210 the server is about to shutdown ......");
 							c.closeAndExitSocket();
 						}
 						closeAndExitSocket();
 						myService.close();
+						
 						break;
 					} else {
-						writeToClient(bufferedWriter, "402 User not allowed to execute this command.");
+						writeToClient("402 User not allowed to execute this command.");
 					}
 				} else if (line != null && line.equals("LOGOUT")) {
 					if (session.size() > 0) {
 						// delete entry from text file
 						session.clear();
-						writeToClient(bufferedWriter, "200 OK");
+						writeToClient("200 OK");
 					} else {
-						writeToClient(bufferedWriter, "409 there are no logged in users.");
+						writeToClient("409 there are no logged in users.");
 					}
 				} else if (line != null && line.equals("QUIT")) {
 					// delete login session file
-					writeToClient(bufferedWriter, "200 OK");
+					writeToClient("200 OK");
 					break;
 				} else if (line != null && line.equals("WHO")) {
 
-					writeToClient(bufferedWriter, "200 OK");
-					writeToClient(bufferedWriter, "The list of the active users:");
+					writeToClient("200 OK");
+					writeToClient("The list of the active users:");
 
 					for (final ClientHandler c : clients) {
 
@@ -306,11 +296,11 @@ class ClientHandler implements Runnable {
 							final String userIP = clientSession.values().toArray()[0].toString();
 							final String msg = username + "      " + userIP;
 
-							writeToClient(bufferedWriter, msg);
+							writeToClient(msg);
 						}
 					}
 				} else {
-					writeToClient(bufferedWriter, "300 message format error.");
+					writeToClient("300 message format error.");
 				}
 			}
 
@@ -331,9 +321,9 @@ class ClientHandler implements Runnable {
 					e.getStackTrace();
 				}
 			}
-			if (bufferedWriter != null) {
+			if (printWriter != null) {
 				try {
-					bufferedWriter.close();
+					printWriter.close();
 				} catch (Exception e) {
 					e.getStackTrace();
 				}
