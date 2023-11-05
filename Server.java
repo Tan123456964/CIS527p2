@@ -5,9 +5,6 @@
 import java.io.*;
 import java.net.*;
 import java.util.*;
-import java.nio.channels.FileChannel;
-import java.nio.channels.FileLock;
-import static java.nio.charset.StandardCharsets.*;
 
 // Server Class 
 public class Server {
@@ -15,48 +12,28 @@ public class Server {
 	public static final int SERVER_PORT = 6333;
 	public static ServerSocket server = null;
 
-	// Delete file
-	public static void deleteAfile(String filename) {
-		File file = new File(filename);
-		// create a file if doesn't exists
-		if (file.exists()) {
-			file.delete();
-		}
-	}
-
-	// Create file
-	public static void createAfile(String filename) throws IOException {
-		File file = new File(filename);
-		// create a file if doesn't exists
-		if (!file.exists()) {
-			file.createNewFile();
-		} else {
-			System.out.println(filename + " already exists.");
-		}
-	}
+	private static ArrayList<ClientHandler> clients = new ArrayList<ClientHandler>(20);
 
 	public static void main(String[] args) {
 		try {
-			// Create user.txt file
-			createAfile("user.txt");
 
 			// server is listening on port 1234
 			server = new ServerSocket(SERVER_PORT);
 
-			// running infinite loop for getting
-			// client request
+			// running infinite loop for getting client request
 			while (true) {
 
-				// socket object to receive incoming client
-				// requests
+				// socket object to receive incoming client requests
 				Socket client = server.accept();
 
 				// create a new thread object
-				ClientHandler clientSock = new ClientHandler(client, server);
+				ClientHandler clientThread = new ClientHandler(client, server, clients);
 
-				// This thread will handle the client
-				// separately
-				new Thread(clientSock).start();
+				// add new client to client lists
+				clients.add(clientThread);
+
+				// This thread will handle the client separately
+				new Thread(clientThread).start();
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -68,8 +45,6 @@ public class Server {
 					e.printStackTrace();
 				}
 			}
-			// delete user txt file
-			deleteAfile("user.txt");
 		}
 		System.out.println("Server is closed");
 	}
@@ -78,62 +53,60 @@ public class Server {
 // ClientHandler class
 class ClientHandler implements Runnable {
 
-	Socket serviceSocket = null;
+	private Socket client = null;
+	private BufferedReader bufferedReader = null;
+	private PrintWriter printWriter = null;
+	private ArrayList<ClientHandler> clients;
+
+	// save logged in user
+	private Map<String, String> session = new HashMap<String, String>();
+
+	// getSession users
+	public Map<String, String> getSession() {
+		return this.session;
+	}
+
 	ServerSocket myService = null;
 	String line;
-	InputStreamReader inputStreamReader = null;
-	OutputStreamWriter outputStreamWriter = null;
-	BufferedReader bufferedReader = null;
-	BufferedWriter bufferedWriter = null;
 
-	public ClientHandler(Socket socket, ServerSocket server) {
-		this.serviceSocket = socket;
+	ClientHandler(Socket client, ServerSocket server, ArrayList<ClientHandler> clients) throws IOException {
+		this.client = client;
+		this.bufferedReader = new BufferedReader(new InputStreamReader(this.client.getInputStream()));
+		this.printWriter = new PrintWriter(this.client.getOutputStream(),true);
 		this.myService = server;
+		this.clients = clients;
 	}
 
 	// write a single message to client
-	public void writeToClient(BufferedWriter br, String message) throws IOException {
-		br.write(message);
-		br.newLine();
-		br.flush();
+	public void writeToClient(String message) throws IOException {
+		this.printWriter.println(message);
+	}
+
+
+
+	// closes the sockets
+	public void closeAndExitSocket() {
+		try {
+			client.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 
 	/**
-	 *
+	 * 
 	 * @filename :"file path"
 	 * @returns <void> : writes (append) text to a file
 	 *          used to save messages to a file (doesn't override content of the
 	 *          file)
 	 */
-	public void writeToFile(String filename, String text) throws IOException {
 
-		File file = new File(filename);
-		RandomAccessFile raf = new RandomAccessFile(file, "rw");
-		FileChannel channel = raf.getChannel();
+	public static void writeToFile(String filename, String text) throws IOException {
 
-		// lock the file so other don't write to file at same time.
-		FileLock lock = channel.lock();
-		try {
-			// //encoding string to utf
-			// byte[] ptext = (text+"\n").getBytes(ISO_8859_1); 
-            // String value = new String(ptext, UTF_8); 
-
-			raf.seek(raf.length());// go to end of line
-			raf.writeChars(text+"\n"); // write text to file
-
-		} catch (Exception e) {
-			e.printStackTrace();
-		} finally {
-			try {
-				if (lock != null)
-					lock.release();
-				if (raf != null)
-					raf.close();
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-		}
-
+		BufferedWriter writer = new BufferedWriter(new FileWriter(new File(filename), true));
+		writer.write(text);
+		writer.newLine();
+		writer.close();
 	}
 
 	/**
@@ -141,93 +114,23 @@ class ClientHandler implements Runnable {
 	 * @filename :"file path"
 	 * @returns : read from file and store them in an arrayList
 	 */
-	public ArrayList<String> readFromFile(String filename) throws IOException {
+	public static ArrayList<String> readFromFile(String filename) throws IOException {
 
 		ArrayList<String> data = new ArrayList<String>();
 
 		File file = new File(filename);
-		RandomAccessFile raf = new RandomAccessFile(file, "rw");
-		FileChannel channel = raf.getChannel();
+		BufferedReader br = new BufferedReader(new FileReader(file));
 
-		// prevent other processes from writing to file while reading
-		FileLock lock = channel.lock();
+		String line = "";
 
-		try {
-			// reading from file
-			String line = "";
-			while ((line = raf.readLine()) != null) {
-				if (line.trim().isEmpty())
-					continue; // don't insert empty lines
-				data.add(line);
-			}
-
-		} catch (Exception e) {
-			e.printStackTrace();
-		} finally {
-			try {
-				if (lock != null)
-					lock.release();
-				if (raf != null)
-					raf.close();
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
+		while ((line = br.readLine()) != null) {
+			if (line.trim().isEmpty())
+				continue; // don't insert empty lines
+			data.add(line);
 		}
 
+		br.close();
 		return data;
-	}
-
-	/**
-	 * @filename e.g, username.txt
-	 * @entry specific line in text file
-	 * @returns <void> : removes a user from file
-	 */
-	public void modifyExistingFile(String filename, String entry) throws IOException {
-
-		File file = new File(filename);
-		RandomAccessFile raf = new RandomAccessFile(file, "rw");
-		FileChannel channel = raf.getChannel();
-
-		// lock the file so other don't write to file at same time.
-		FileLock lock = channel.lock();
-
-		try {
-			// reading from file
-			ArrayList<String> data = new ArrayList<String>();
-			String line = "";
-			while ((line = raf.readLine()) != null) {
-				if (line.trim().isEmpty())
-					continue; // don't insert empty lines
-
-			    //encoing to UTF and removing null bytes 
-				byte[] ptext = (line).getBytes(ISO_8859_1); 
-				byte[] noNullByte= new String(ptext).replaceAll("\0", "").getBytes();
-                String value = new String(noNullByte, UTF_8); 
-				data.add(value);
-			}
-
-			//removing entry from arraylist 
-			data.removeIf(e -> e.equals(entry));
-  
-			// writing remaining data to file 
-			raf.setLength(0); //clear file 
-			for (final String u : data){
-				raf.seek(raf.length()); //go to end of line
-				raf.writeChars(u+"\n");
-			}
-
-		} catch (Exception e) {
-			e.printStackTrace();
-		} finally {
-			try {
-				if (lock != null)
-					lock.release();
-				if (raf != null)
-					raf.close();
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-		}
 	}
 
 	@Override
@@ -245,35 +148,56 @@ class ClientHandler implements Runnable {
 		// open input and output streams
 
 		try {
-
-			// File input & output
-			inputStreamReader = new InputStreamReader(serviceSocket.getInputStream());
-			outputStreamWriter = new OutputStreamWriter(serviceSocket.getOutputStream());
-
-			bufferedReader = new BufferedReader(inputStreamReader);
-			bufferedWriter = new BufferedWriter(outputStreamWriter);
-
 			// Get client port and IP
-			final String IP_ADDRESS = serviceSocket.getInetAddress().toString().replace("/","");
-			final String PORT_NUMBER = Integer.toString(serviceSocket.getPort());
+			final String IP_ADDRESS = client.getInetAddress().toString().replace("/", "");
 
 			// message store command
 			String msgStoreCMD = "";
+
+			// message send command
+			String msgSendCMD = "";
+			String msgSendUSER = "";
 
 			// word of the day
 			int wordNum = 0;
 
 			// save logged in user
-			Map<String, String> session = new HashMap<String, String>();
+			// Map<String, String> session = new HashMap<String, String>();
 
 			// as long as we receive data, echo that data back to the client.
 			while (true) {
 
 				line = bufferedReader.readLine();
 
-				System.out.println("Client CMD: " + line);
+				if (line != null && line.contains("SEND") || (msgSendCMD.equals("SEND") && !msgSendUSER.isEmpty())) {
+					if (msgSendCMD.equals("SEND")) {
+						String msg1 = "200 OK you have a new message from " + msgSendUSER;
+						String msg2 = session.keySet().toArray()[0] + ": " + line;
+						for (final ClientHandler c : clients) {
+							if (c.getSession().containsKey(msgSendUSER)) {
+								c.writeToClient(msg1);
+								c.writeToClient(msg2);
+								break;
+							}
+						}
+						msgSendCMD = "";
+						msgSendUSER = "";
 
-				if (line != null && (line.equals("MSGSTORE") || msgStoreCMD.equals("MSGSTORE"))) {
+					} else {
+						String send[] = line.split(" ");
+						if (send.length != 2) {
+							writeToClient("Invalid send command");
+						} else if (userInfo.containsKey(send[1])) {
+							msgSendCMD = "SEND";
+							msgSendUSER = send[1];
+							writeToClient("200 OK");
+						} else {
+							// do nothing
+						}
+					}
+				}
+
+				else if (line != null && (line.equals("MSGSTORE") || msgStoreCMD.equals("MSGSTORE"))) {
 					if (session.size() == 1) {
 						if (msgStoreCMD.equals("MSGSTORE")) {
 							writeToFile("word.txt", line);
@@ -281,109 +205,111 @@ class ClientHandler implements Runnable {
 						} else {
 							msgStoreCMD = line;
 						}
-						writeToClient(bufferedWriter, "200 OK");
+						writeToClient("200 OK");
 					} else {
-						writeToClient(bufferedWriter, "401 You are not currently logged in, login first.");
+						writeToClient("401 You are not currently logged in, login first.");
 					}
 				} else if (line != null && line.equals("MSGGET")) {
 					ArrayList<String> word = readFromFile("word.txt");
-					writeToClient(bufferedWriter, "200 OK");
-					writeToClient(bufferedWriter, word.get(wordNum % word.size()));
+					writeToClient("200 OK");
+					writeToClient(word.get(wordNum % word.size()));
 					wordNum++;
 				} else if (line != null && line.contains("LOGIN")) {
 					String login[] = line.split(" ");
 					if (session.size() > 0) {
 						String msg = "409 user " + session.keySet().toArray()[0] + " is already logged in.";
-						writeToClient(bufferedWriter, msg);
+						writeToClient(msg);
 					} else if (login.length < 3) {
-						writeToClient(bufferedWriter, "300 message format error.");
+						writeToClient("300 message format error.");
 					} else if (userInfo.containsKey(login[1]) && userInfo.get(login[1]).equals(login[2])) {
-						session.put(login[1], login[2]);
-						// insert entry to text file
-						final String userEntry = login[1] + "|" + PORT_NUMBER + "|" + IP_ADDRESS;
-						// read user .txt file
-						final ArrayList<String> data = this.readFromFile("user.txt");
-						Boolean isUserLoggedin = false;
-						for (final String info : data) {
-							if (info.contains(login[1])) {
-								isUserLoggedin = true;
+
+						boolean isUserLoggedIn = false;
+
+						for (final ClientHandler c : clients) {
+							String clientname = "";
+							if (c.getSession().size() > 0) {
+								clientname = c.getSession().keySet().toArray()[0].toString();
+							}
+							if (clientname.equals(login[1])) {
+								isUserLoggedIn = true;
 								break;
 							}
 						}
-						if (!isUserLoggedin) {
-							this.writeToFile("user.txt", userEntry);
-							writeToClient(bufferedWriter, "200 OK");
+						if (!isUserLoggedIn) {
+							session.put(login[1], IP_ADDRESS);
+							writeToClient("200 OK");
 						} else {
-							writeToClient(bufferedWriter, "404 user already logged in.");
-
+							writeToClient("201 user is already logged in by another client");
 						}
 
 					} else {
-						writeToClient(bufferedWriter, "410 Wrong UserID or Password.");
+						writeToClient("410 Wrong UserID or Password.");
 					}
 				} else if (line != null && line.equals("SHUTDOWN")) {
 
 					if (session.size() > 0 && session.containsKey("root")) {
-						writeToClient(bufferedWriter, "200 OK");
+						writeToClient("200 OK");
+
+						// close all running sockets
+						for (final ClientHandler c : clients) {
+							// Don't close current client yet
+							String clientname = "";
+							if (c.getSession().size() > 0) {
+								clientname = c.getSession().keySet().toArray()[0].toString();
+							}
+							if (session.containsKey(clientname)) {
+								continue;
+							}
+							c.writeToClient("210 the server is about to shutdown ......");
+							c.closeAndExitSocket();
+						}
+						closeAndExitSocket();
 						myService.close();
+						
 						break;
 					} else {
-						writeToClient(bufferedWriter, "402 User not allowed to execute this command.");
+						writeToClient("402 User not allowed to execute this command.");
 					}
 				} else if (line != null && line.equals("LOGOUT")) {
 					if (session.size() > 0) {
 						// delete entry from text file
-						final String username = session.keySet().toArray()[0].toString();
-						final String userEntry = username + "|" + PORT_NUMBER + "|" + IP_ADDRESS;
-						this.modifyExistingFile("user.txt", userEntry);
 						session.clear();
-						writeToClient(bufferedWriter, "200 OK");
+						writeToClient("200 OK");
 					} else {
-						writeToClient(bufferedWriter, "409 there are no logged in users.");
+						writeToClient("409 there are no logged in users.");
 					}
 				} else if (line != null && line.equals("QUIT")) {
 					// delete login session file
-					writeToClient(bufferedWriter, "200 OK");
+					writeToClient("200 OK");
 					break;
 				} else if (line != null && line.equals("WHO")) {
-					final ArrayList<String> data = this.readFromFile("user.txt");
-					String who = "";
 
-					for (final String s : data) {
-						who += s + ",";
+					writeToClient("200 OK");
+					writeToClient("The list of the active users:");
+
+					for (final ClientHandler c : clients) {
+
+						final Map<String, String> clientSession = c.getSession();
+						if (clientSession.size() > 0) {
+
+							final String username = clientSession.keySet().toArray()[0].toString();
+							final String userIP = clientSession.values().toArray()[0].toString();
+							final String msg = username + "      " + userIP;
+
+							writeToClient(msg);
+						}
 					}
-					writeToClient(bufferedWriter, "200 OK");
-					writeToClient(bufferedWriter, who);
-				}
-
-				/**
-				 * else if(line != null && line.equals("SEND")){....}
-				 */
-				else {
-					writeToClient(bufferedWriter, "300 message format error.");
+				} else {
+					writeToClient("300 message format error.");
 				}
 			}
 
 		} catch (IOException e) {
 			e.printStackTrace();
 		} finally {
-			if (serviceSocket != null) {
+			if (client != null) {
 				try {
-					serviceSocket.close();
-				} catch (Exception e) {
-					e.getStackTrace();
-				}
-			}
-			if (inputStreamReader != null) {
-				try {
-					inputStreamReader.close();
-				} catch (Exception e) {
-					e.getStackTrace();
-				}
-			}
-			if (outputStreamWriter != null) {
-				try {
-					outputStreamWriter.close();
+					client.close();
 				} catch (Exception e) {
 					e.getStackTrace();
 				}
@@ -395,9 +321,9 @@ class ClientHandler implements Runnable {
 					e.getStackTrace();
 				}
 			}
-			if (bufferedWriter != null) {
+			if (printWriter != null) {
 				try {
-					bufferedWriter.close();
+					printWriter.close();
 				} catch (Exception e) {
 					e.getStackTrace();
 				}
