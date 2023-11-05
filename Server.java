@@ -2,14 +2,14 @@
  * Server.java
  */
 
-import static java.nio.charset.StandardCharsets.ISO_8859_1;
-import static java.nio.charset.StandardCharsets.UTF_8;
+// import static java.nio.charset.StandardCharsets.ISO_8859_1;
+// import static java.nio.charset.StandardCharsets.UTF_8;
 
 import java.io.*;
 import java.net.*;
 import java.util.*;
-import java.nio.channels.FileChannel;
-import java.nio.channels.FileLock;
+// import java.nio.channels.FileChannel;
+// import java.nio.channels.FileLock;
 
 // Server Class 
 public class Server {
@@ -99,41 +99,19 @@ class ClientHandler implements Runnable {
 	}
 
 	/**
-	 *
+	 * 
 	 * @filename :"file path"
 	 * @returns <void> : writes (append) text to a file
 	 *          used to save messages to a file (doesn't override content of the
 	 *          file)
 	 */
-	public void writeToFile(String filename, String text) throws IOException {
 
-		File file = new File(filename);
-		RandomAccessFile raf = new RandomAccessFile(file, "rw");
-		FileChannel channel = raf.getChannel();
+	public static void writeToFile(String filename, String text) throws IOException {
 
-		// lock the file so other don't write to file at same time.
-		FileLock lock = channel.lock();
-		try {
-			// //encoding string to utf
-			byte[] ptext = (text+"\n").getBytes(ISO_8859_1);
-			String value = new String(ptext, UTF_8);
-
-			raf.seek(raf.length());// go to end of line
-			raf.writeChars(value + "\n"); // write text to file
-
-		} catch (Exception e) {
-			e.printStackTrace();
-		} finally {
-			try {
-				if (lock != null)
-					lock.release();
-				if (raf != null)
-					raf.close();
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-		}
-
+		BufferedWriter writer = new BufferedWriter(new FileWriter(new File(filename), true));
+		writer.write(text);
+		writer.newLine();
+		writer.close();
 	}
 
 	/**
@@ -141,39 +119,22 @@ class ClientHandler implements Runnable {
 	 * @filename :"file path"
 	 * @returns : read from file and store them in an arrayList
 	 */
-	public ArrayList<String> readFromFile(String filename) throws IOException {
+	public static ArrayList<String> readFromFile(String filename) throws IOException {
 
 		ArrayList<String> data = new ArrayList<String>();
 
 		File file = new File(filename);
-		RandomAccessFile raf = new RandomAccessFile(file, "rw");
-		FileChannel channel = raf.getChannel();
+		BufferedReader br = new BufferedReader(new FileReader(file));
 
-		// prevent other processes from writing to file while reading
-		FileLock lock = channel.lock();
+		String line = "";
 
-		try {
-			// reading from file
-			String line = "";
-			while ((line = raf.readLine()) != null) {
-				if (line.trim().isEmpty())
-					continue; // don't insert empty lines
-				data.add(line);
-			}
-
-		} catch (Exception e) {
-			e.printStackTrace();
-		} finally {
-			try {
-				if (lock != null)
-					lock.release();
-				if (raf != null)
-					raf.close();
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
+		while ((line = br.readLine()) != null) {
+			if (line.trim().isEmpty())
+				continue; // don't insert empty lines
+			data.add(line);
 		}
 
+		br.close();
 		return data;
 	}
 
@@ -226,7 +187,7 @@ class ClientHandler implements Runnable {
 								// c.bufferedWriter.write(msg1);
 								// //c.bufferedWriter.flush();
 								// c.bufferedWriter.write(msg2);
-								//c.bufferedWriter.flush();
+								// c.bufferedWriter.flush();
 								break;
 							}
 						}
