@@ -170,9 +170,13 @@ class ClientHandler implements Runnable {
 				line = bufferedReader.readLine();
 
 				if (line != null && line.contains("SEND") || (msgSendCMD.equals("SEND") && !msgSendUSER.isEmpty())) {
-					if (msgSendCMD.equals("SEND")) {
-						String msg1 = "200 OK you have a new message from " + msgSendUSER;
-						String msg2 = session.keySet().toArray()[0] + ": " + line;
+					if (session.size() < 0) {
+						writeToClient("You are not logged in. Only logged in users are allowed to send messages.");
+					}
+					else if (msgSendCMD.equals("SEND")) {
+						String userName = session.keySet().toArray()[0].toString();
+						String msg1 = "200 OK you have a new message from " + userName;
+						String msg2 = userName + ": " + line;
 						for (final ClientHandler c : clients) {
 							if (c.getSession().containsKey(msgSendUSER)) {
 								c.writeToClient(msg1);
@@ -180,6 +184,7 @@ class ClientHandler implements Runnable {
 								break;
 							}
 						}
+						writeToClient("200 OK");
 						msgSendCMD = "";
 						msgSendUSER = "";
 
@@ -263,6 +268,7 @@ class ClientHandler implements Runnable {
 							c.writeToClient("210 the server is about to shutdown ......");
 							c.closeAndExitSocket();
 						}
+						writeToClient("210 the server is about to shutdown ......");
 						closeAndExitSocket();
 						myService.close();
 						
@@ -279,8 +285,8 @@ class ClientHandler implements Runnable {
 						writeToClient("409 there are no logged in users.");
 					}
 				} else if (line != null && line.equals("QUIT")) {
-					// delete login session file
 					writeToClient("200 OK");
+					session.clear();
 					break;
 				} else if (line != null && line.equals("WHO")) {
 
