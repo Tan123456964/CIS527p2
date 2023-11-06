@@ -60,9 +60,9 @@ public class Client {
 			}
 
 		} catch (UnknownHostException e) {
-			System.err.println("Don't know about host: hostname");
+			//System.err.println("Don't know about host: hostname");
 		} catch (IOException e) {
-			System.err.println("Couldn't get I/O for the connection to: hostname");
+			//System.err.println("Couldn't get I/O for the connection to: hostname");
 		} finally {
 
 			try {
@@ -86,8 +86,6 @@ class ServerMessageHandler implements Runnable {
 	private Socket server = null;
 	private BufferedReader bufferedReader = null;
 	private String serverInput = null;
-    // Used to terminate client socket when SERVER is closed.
-	private String sentinel ="210 the server is about to shutdown ......";
 
 	ServerMessageHandler(Socket server) throws IOException {
 		this.server = server;
@@ -99,15 +97,18 @@ class ServerMessageHandler implements Runnable {
 
 		try {
 			while (true) {
-				// print any messages you receive from server 
-				serverInput = bufferedReader.readLine();
-				System.out.println(serverInput);
 
-				// If server is closed by a root user 
-				if(serverInput.equals(sentinel)){
+				//Close client if server not available 
+				if(server.getInputStream().available() < 0){
 					break;
 				}
-				
+
+				// print any messages you receive from server 
+				serverInput = bufferedReader.readLine();
+				if(serverInput != null){
+					System.out.println(serverInput);
+				}
+
 				// get out of infinite loop if server is not responding anything back 
 				if(serverInput == null){
 					break;
