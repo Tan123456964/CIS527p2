@@ -36,13 +36,13 @@ public class Server {
 				new Thread(clientThread).start();
 			}
 		} catch (IOException e) {
-			e.printStackTrace();
+			// can be logged to a file 
 		} finally {
 			if (server != null) {
 				try {
 					server.close();
 				} catch (IOException e) {
-					e.printStackTrace();
+					// can be logged to a file 
 				}
 			}
 		}
@@ -66,13 +66,18 @@ class ClientHandler implements Runnable {
 		return this.session;
 	}
 
+	//get clientObject
+	public Socket getClientSocket(){
+		return this.client;
+	}
+
 	ServerSocket myService = null;
 	String line;
 
 	ClientHandler(Socket client, ServerSocket server, ArrayList<ClientHandler> clients) throws IOException {
 		this.client = client;
 		this.bufferedReader = new BufferedReader(new InputStreamReader(this.client.getInputStream()));
-		this.printWriter = new PrintWriter(this.client.getOutputStream(),true);
+		this.printWriter = new PrintWriter(this.client.getOutputStream(), true);
 		this.myService = server;
 		this.clients = clients;
 	}
@@ -82,15 +87,9 @@ class ClientHandler implements Runnable {
 		this.printWriter.println(message);
 	}
 
-
-
 	// closes the sockets
-	public void closeAndExitSocket() {
-		try {
-			client.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+	public void closeAndExitSocket() throws IOException{
+		client.close();
 	}
 
 	/**
@@ -148,9 +147,6 @@ class ClientHandler implements Runnable {
 		// open input and output streams
 
 		try {
-			// Get client port and IP
-			final String IP_ADDRESS = client.getInetAddress().toString().replace("/", "");
-
 			// message store command
 			String msgStoreCMD = "";
 
@@ -170,35 +166,38 @@ class ClientHandler implements Runnable {
 				line = bufferedReader.readLine();
 
 				if (line != null && line.contains("SEND") || (msgSendCMD.equals("SEND") && !msgSendUSER.isEmpty())) {
-					if (session.size() < 0) {
-						writeToClient("You are not logged in. Only logged in users are allowed to send messages.");
-					}
-					else if (msgSendCMD.equals("SEND")) {
-						String userName = session.keySet().toArray()[0].toString();
-						String msg1 = "200 OK you have a new message from " + userName;
-						String msg2 = userName + ": " + line;
-						for (final ClientHandler c : clients) {
-							if (c.getSession().containsKey(msgSendUSER)) {
-								c.writeToClient(msg1);
-								c.writeToClient(msg2);
-								break;
+
+					if (session.size() > 0) {
+						if (msgSendCMD.equals("SEND")) {
+							String userName = session.keySet().toArray()[0].toString();
+							String msg1 = "200 OK you have a new message from " + userName;
+							String msg2 = userName + ": " + line;
+							for (final ClientHandler c : clients) {
+								if (c.getSession().containsKey(msgSendUSER)) {
+									c.writeToClient(msg1);
+									c.writeToClient(msg2);
+									break;
+								}
+							}
+							writeToClient("200 OK");
+							msgSendCMD = "";
+							msgSendUSER = "";
+
+						} else {
+							String send[] = line.split(" ");
+							if (send.length != 2) {
+								writeToClient("Invalid send command");
+							} else if (userInfo.containsKey(send[1])) {
+								msgSendCMD = "SEND";
+								msgSendUSER = send[1];
+								writeToClient("200 OK");
+							} else {
+								// do nothing
 							}
 						}
-						writeToClient("200 OK");
-						msgSendCMD = "";
-						msgSendUSER = "";
-
 					} else {
-						String send[] = line.split(" ");
-						if (send.length != 2) {
-							writeToClient("Invalid send command");
-						} else if (userInfo.containsKey(send[1])) {
-							msgSendCMD = "SEND";
-							msgSendUSER = send[1];
-							writeToClient("200 OK");
-						} else {
-							// do nothing
-						}
+						writeToClient("You are not logged in. Only logged in users are allowed to send messages.");
+
 					}
 				}
 
@@ -241,7 +240,8 @@ class ClientHandler implements Runnable {
 							}
 						}
 						if (!isUserLoggedIn) {
-							session.put(login[1], IP_ADDRESS);
+							//login[0]= CMD, login[1]= uername, login[2]=password
+							session.put(login[1], login[2]);
 							writeToClient("200 OK");
 						} else {
 							writeToClient("201 user is already logged in by another client");
@@ -271,7 +271,7 @@ class ClientHandler implements Runnable {
 						writeToClient("210 the server is about to shutdown ......");
 						closeAndExitSocket();
 						myService.close();
-						
+
 						break;
 					} else {
 						writeToClient("402 User not allowed to execute this command.");
@@ -298,9 +298,9 @@ class ClientHandler implements Runnable {
 						final Map<String, String> clientSession = c.getSession();
 						if (clientSession.size() > 0) {
 
-							final String username = clientSession.keySet().toArray()[0].toString();
-							final String userIP = clientSession.values().toArray()[0].toString();
-							final String msg = username + "      " + userIP;
+							final String USERNAME = clientSession.keySet().toArray()[0].toString();
+							final String IP_ADDRESS = c.getClientSocket().getInetAddress().toString().replace("/", "");
+							final String msg = USERNAME + "      " + IP_ADDRESS;
 
 							writeToClient(msg);
 						}
@@ -311,27 +311,27 @@ class ClientHandler implements Runnable {
 			}
 
 		} catch (IOException e) {
-			e.printStackTrace();
+			// can be logged to a file 
 		} finally {
 			if (client != null) {
 				try {
 					client.close();
 				} catch (Exception e) {
-					e.getStackTrace();
+					// can be logged to a file 
 				}
 			}
 			if (bufferedReader != null) {
 				try {
 					bufferedReader.close();
 				} catch (Exception e) {
-					e.getStackTrace();
+					// can be logged to a file 
 				}
 			}
 			if (printWriter != null) {
 				try {
 					printWriter.close();
 				} catch (Exception e) {
-					e.getStackTrace();
+					// can be logged to a file 
 				}
 			}
 
