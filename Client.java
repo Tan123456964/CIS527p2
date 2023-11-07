@@ -72,7 +72,7 @@ public class Client {
 					bufferedWriter.close();
 
 			} catch (Exception error) {
-				error.printStackTrace();
+				// do nothing
 			}
 		}
 
@@ -116,12 +116,12 @@ class ServerMessageHandler implements Runnable {
 			}
 
 		} catch (IOException e) {
-			e.printStackTrace();
+			// do nothing
 		} finally {
 			try {
 				bufferedReader.close();
 			} catch (IOException e) {
-				e.printStackTrace();
+				// do nothing
 			}
 		}
 

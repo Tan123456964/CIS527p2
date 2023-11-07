@@ -5,7 +5,7 @@
 ### GROUP INFO
 UMich CIS 527 Group: 30
 ### CONTRIBUTIONS FROM AUTHORS
-- Brainstormed on how to approach the project.
+- Brainstormed on how to approach the second part of the project.
 - Decided on whether to use C, C++ or continue with Java, and drew out the structure for the sample program files.
 - Engaged in discussions on how to implement multi-socket programming using Java.
 - Engaged in research on how to implement the program.
@@ -26,7 +26,7 @@ UMich CIS 527 Group: 30
 - writeToServer: used to send messages from the client to the server.
 
 ### PROJECT DESCRIPTION
-The programs are written in java programming language and can be run on either a linux or unix environment. There is a client "Client.java" as well as server "Server.java" program. The communication between the server and client happens through TCP using the port number 6333. The server receives requests through this socket, acts on those requests, and returns the results to the requester. The clients also creates a socket in the internet domain, send requests to the server IP of a computer specified on the command-line, and receive responses through these sockets from the server. Multiple connections between one or more clients and the server is possible.
+The programs are written in java programming language and can be run on either a linux or unix environment. There is a client "Client.java" as well as server "Server.java" program. The communication between the server and clients happen through TCP using the port number 6333. The server receives requests through this socket, acts on those requests, and returns the results to the requester. The clients also creates a socket in the internet domain, send requests to the server IP of a computer specified on the command-line, and receive responses through these sockets from the server. Multiple connections between one or more clients and the server is possible.
 
 It performs the following functions;
 - It returns a message of the day on the client console to any user that sends the server a MSGGET message.
@@ -164,10 +164,6 @@ The QUIT command is used to terminate the session between the client and the ser
 c: QUIT
 ***Client Terminated Successfully***
 s: 200 OK
-java.net.SocketException: Socket is closed
-        at java.base/java.net.Socket.getInputStream(Socket.java:927)
-        at ServerMessageHandler.run(Client.java:102)
-        at java.base/java.lang.Thread.run(Thread.java:833)
 ```
 #### WHO
 The WHO command is used to list all logged-in users as well as the their IP addresses. If the command is correctly sent and successful, the server returns a "200 OK" message. The operation of the WHO command is shown below.
