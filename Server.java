@@ -36,13 +36,13 @@ public class Server {
 				new Thread(clientThread).start();
 			}
 		} catch (IOException e) {
-			// can be logged to a file 
+			// can be logged to a file
 		} finally {
 			if (server != null) {
 				try {
 					server.close();
 				} catch (IOException e) {
-					// can be logged to a file 
+					// can be logged to a file
 				}
 			}
 		}
@@ -66,8 +66,8 @@ class ClientHandler implements Runnable {
 		return this.session;
 	}
 
-	//get clientObject
-	public Socket getClientSocket(){
+	// get clientObject
+	public Socket getClientSocket() {
 		return this.client;
 	}
 
@@ -88,7 +88,7 @@ class ClientHandler implements Runnable {
 	}
 
 	// closes the sockets
-	public void closeAndExitSocket() throws IOException{
+	public void closeAndExitSocket() throws IOException {
 		client.close();
 	}
 
@@ -144,7 +144,6 @@ class ClientHandler implements Runnable {
 
 		// creates a socket object from the ServerSocket to listen and accept
 		// connections.
-		// open input and output streams
 
 		try {
 			// message store command
@@ -157,15 +156,13 @@ class ClientHandler implements Runnable {
 			// word of the day
 			int wordNum = 0;
 
-			// save logged in user
-			// Map<String, String> session = new HashMap<String, String>();
-
 			// as long as we receive data, echo that data back to the client.
 			while (true) {
 
 				line = bufferedReader.readLine();
 
-				if (line != null && line.contains("SEND") || (msgSendCMD.equals("SEND") && !msgSendUSER.isEmpty())) {
+				if (line != null && ((line.contains("SEND") && line.length() > 4 && msgStoreCMD.isEmpty()) ||
+						(msgSendCMD.equals("SEND") && !msgSendUSER.isEmpty() && msgStoreCMD.isEmpty()))) {
 
 					if (session.size() > 0) {
 						if (msgSendCMD.equals("SEND")) {
@@ -240,7 +237,7 @@ class ClientHandler implements Runnable {
 							}
 						}
 						if (!isUserLoggedIn) {
-							//login[0]= CMD, login[1]= uername, login[2]=password
+							// login[0]= CMD, login[1]= uername, login[2]=password
 							session.put(login[1], login[2]);
 							writeToClient("200 OK");
 						} else {
@@ -311,27 +308,27 @@ class ClientHandler implements Runnable {
 			}
 
 		} catch (IOException e) {
-			// can be logged to a file 
+			// can be logged to a file
 		} finally {
 			if (client != null) {
 				try {
 					client.close();
 				} catch (Exception e) {
-					// can be logged to a file 
+					// can be logged to a file
 				}
 			}
 			if (bufferedReader != null) {
 				try {
 					bufferedReader.close();
 				} catch (Exception e) {
-					// can be logged to a file 
+					// can be logged to a file
 				}
 			}
 			if (printWriter != null) {
 				try {
 					printWriter.close();
 				} catch (Exception e) {
-					// can be logged to a file 
+					// can be logged to a file
 				}
 			}
 
