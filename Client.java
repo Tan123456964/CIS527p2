@@ -36,7 +36,7 @@ public class Client {
 			bufferedWriter = new BufferedWriter(new OutputStreamWriter(clientSocket.getOutputStream()));
 			Scanner scanner = new Scanner(System.in);
 
-			// Start the single thread
+			// start the single thread
 			new Thread(serverMessageHandler).start();
 
 			// if everything has been initialized then we want to write some data
@@ -52,7 +52,7 @@ public class Client {
 				// send a request to server
 				writeToServer(bufferedWriter, userInput);
 
-				// if we encounter quit
+				// if we encounter quit command
 				if (userInput.equals("QUIT")) {
 					scanner.close();
 					break;
@@ -60,9 +60,9 @@ public class Client {
 			}
 
 		} catch (UnknownHostException e) {
-			//System.err.println("Don't know about host: hostname");
+			// do nothing
 		} catch (IOException e) {
-			//System.err.println("Couldn't get I/O for the connection to: hostname");
+			// do nothing
 		} finally {
 
 			try {
@@ -109,7 +109,7 @@ class ServerMessageHandler implements Runnable {
 					System.out.println(serverInput);
 				}
 
-				// get out of infinite loop if server is not responding anything back 
+				// get out of infinite loop if server is not sending any feedback
 				if(serverInput == null){
 					break;
 				}
