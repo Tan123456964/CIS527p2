@@ -17,10 +17,10 @@ public class Server {
 	public static void main(String[] args) {
 		try {
 
-			// server is listening on port 1234
+			// server is listening on port 6333
 			server = new ServerSocket(SERVER_PORT);
 
-			// running infinite loop for getting client request
+			// run infinite loop to get client request
 			while (true) {
 
 				// socket object to receive incoming client requests
@@ -29,20 +29,20 @@ public class Server {
 				// create a new thread object
 				ClientHandler clientThread = new ClientHandler(client, server, clients);
 
-				// add new client to client lists
+				// add new client to clients list
 				clients.add(clientThread);
 
-				// This thread will handle the client separately
+				// thread to separately handle each client
 				new Thread(clientThread).start();
 			}
 		} catch (IOException e) {
-			// can be logged to a file
+			// do nothing
 		} finally {
 			if (server != null) {
 				try {
 					server.close();
 				} catch (IOException e) {
-					// can be logged to a file
+					// do nothing
 				}
 			}
 		}
@@ -58,7 +58,7 @@ class ClientHandler implements Runnable {
 	private PrintWriter printWriter = null;
 	private ArrayList<ClientHandler> clients;
 
-	// save logged in user
+	// save logged-in user
 	private Map<String, String> session = new HashMap<String, String>();
 
 	// getSession users
@@ -87,7 +87,7 @@ class ClientHandler implements Runnable {
 		this.printWriter.println(message);
 	}
 
-	// closes the sockets
+	// close the sockets
 	public void closeAndExitSocket() throws IOException {
 		client.close();
 	}
@@ -142,8 +142,7 @@ class ClientHandler implements Runnable {
 		userInfo.put("david", "david01");
 		userInfo.put("mary", "mary01");
 
-		// creates a socket object from the ServerSocket to listen and accept
-		// connections.
+		// creates a socket object from the ServerSocket to listen and accept connections.
 
 		try {
 			// message store command
@@ -226,6 +225,7 @@ class ClientHandler implements Runnable {
 					writeToClient(word.get(wordNum % word.size()));
 					wordNum++;
 				} else if (line != null && line.contains("LOGIN")) {
+					// login[0]= CMD, login[1]= username, login[2]=password
 					String login[] = line.split(" ");
 					if (session.size() > 0) {
 						String msg = "409 user " + session.keySet().toArray()[0] + " is already logged in.";
@@ -247,7 +247,6 @@ class ClientHandler implements Runnable {
 							}
 						}
 						if (!isUserLoggedIn) {
-							// login[0]= CMD, login[1]= uername, login[2]=password
 							session.put(login[1], login[2]);
 							writeToClient("200 OK");
 						} else {
@@ -264,7 +263,7 @@ class ClientHandler implements Runnable {
 
 						// close all running sockets
 						for (final ClientHandler c : clients) {
-							// Don't close current client yet
+							// do not close current clients yet
 							String clientname = "";
 							if (c.getSession().size() > 0) {
 								clientname = c.getSession().keySet().toArray()[0].toString();
@@ -318,27 +317,27 @@ class ClientHandler implements Runnable {
 			}
 
 		} catch (IOException e) {
-			// can be logged to a file
+			// do nothing
 		} finally {
 			if (client != null) {
 				try {
 					client.close();
 				} catch (Exception e) {
-					// can be logged to a file
+					// do nothing
 				}
 			}
 			if (bufferedReader != null) {
 				try {
 					bufferedReader.close();
 				} catch (Exception e) {
-					// can be logged to a file
+					// do nothing
 				}
 			}
 			if (printWriter != null) {
 				try {
 					printWriter.close();
 				} catch (Exception e) {
-					// can be logged to a file
+					// do nothing
 				}
 			}
 
