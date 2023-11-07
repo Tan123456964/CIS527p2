@@ -161,7 +161,7 @@ class ClientHandler implements Runnable {
 
 				line = bufferedReader.readLine();
 
-				if (line != null && ((line.contains("SEND") && line.length() > 4 && msgStoreCMD.isEmpty()) ||
+				if (line != null && ((line.contains("SEND") && msgStoreCMD.isEmpty()) ||
 						(msgSendCMD.equals("SEND") && !msgSendUSER.isEmpty() && msgStoreCMD.isEmpty()))) {
 
 					if (session.size() > 0) {
@@ -184,17 +184,27 @@ class ClientHandler implements Runnable {
 							String send[] = line.split(" ");
 							if (send.length != 2) {
 								writeToClient("Invalid send command");
-							} else if (userInfo.containsKey(send[1])) {
-								msgSendCMD = "SEND";
-								msgSendUSER = send[1];
-								writeToClient("200 OK");
 							} else {
-								// do nothing
+								boolean isUserLoggedIn = false;
+								for (final ClientHandler c : clients) {
+									final Map<String, String> session = c.getSession();
+									if (session.containsKey(send[1])) {
+										isUserLoggedIn = true;
+										break;
+									}
+								}
+								if (isUserLoggedIn) {
+									msgSendCMD = "SEND";
+									msgSendUSER = send[1];
+									writeToClient("200 OK");
+
+								} else {
+									writeToClient("420 either the user does not exist or is not logged in.");
+								}
 							}
 						}
 					} else {
-						writeToClient("You are not logged in. Only logged in users are allowed to send messages.");
-
+						writeToClient("402 you are not logged in. Only logged in users are allowed to send messages.");
 					}
 				}
 
