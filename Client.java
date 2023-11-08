@@ -76,7 +76,6 @@ public class Client {
 			}
 		}
 
-		System.out.println("***Client Terminated Successfully.***");
 	}
 }
 
@@ -123,6 +122,7 @@ class ServerMessageHandler implements Runnable {
 			} catch (IOException e) {
 				// do nothing
 			}
+			System.out.println("***Client Terminated Successfully.***");
 		}
 
 	}
