@@ -162,8 +162,8 @@ s: 409 there are no logged in users.
 The QUIT command is used to terminate the session between the client and the server. If the command is correctly sent and successful, the server returns a "200 OK" message. The operation of the QUIT command is shown below.
 ```bash
 c: QUIT
-***Client Terminated Successfully***
 s: 200 OK
+***Client Terminated Successfully***
 ```
 #### WHO
 The WHO command is used to list all logged-in users as well as the their IP addresses. If the command is correctly sent and successful, the server returns a "200 OK" message. The operation of the WHO command is shown below.
