@@ -26,7 +26,7 @@ public class Server {
 				// socket object to receive incoming client requests
 				Socket client = server.accept();
 
-				// create a new thread object
+				// create a new ClientHandler thread 
 				ClientHandler clientThread = new ClientHandler(client, server, clients);
 
 				// add new client to clients list
@@ -142,7 +142,6 @@ class ClientHandler implements Runnable {
 		userInfo.put("david", "david01");
 		userInfo.put("mary", "mary01");
 
-		// creates a socket object from the ServerSocket to listen and accept connections.
 
 		try {
 			// message store command
@@ -155,19 +154,20 @@ class ClientHandler implements Runnable {
 			// word of the day
 			int wordNum = 0;
 
-			// as long as we receive data, echo that data back to the client.
 			while (true) {
 
+				// reading input from client 
 				line = bufferedReader.readLine();
 
 				if (line != null && ((line.contains("SEND") && msgStoreCMD.isEmpty()) ||
 						(msgSendCMD.equals("SEND") && !msgSendUSER.isEmpty() && msgStoreCMD.isEmpty()))) {
-
+                    // only logged in user can send a message 
 					if (session.size() > 0) {
 						if (msgSendCMD.equals("SEND")) {
 							String userName = session.keySet().toArray()[0].toString();
 							String msg1 = "200 OK you have a new message from " + userName;
 							String msg2 = userName + ": " + line;
+                            // Sending a message to a specific client from client list 
 							for (final ClientHandler c : clients) {
 								if (c.getSession().containsKey(msgSendUSER)) {
 									c.writeToClient(msg1);
@@ -185,6 +185,7 @@ class ClientHandler implements Runnable {
 								writeToClient("Invalid send command");
 							} else {
 								boolean isUserLoggedIn = false;
+								// checks if a user is logged in and valid 
 								for (final ClientHandler c : clients) {
 									final Map<String, String> session = c.getSession();
 									if (session.containsKey(send[1])) {
